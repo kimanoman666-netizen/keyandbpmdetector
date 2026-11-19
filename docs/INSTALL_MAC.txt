@@ -1,0 +1,23 @@
+KeyBPM Detector — установка на Mac
+===================================
+
+1. Скопируй:
+   «KeyBPM Detector.vst3»      → ~/Library/Audio/Plug-Ins/VST3
+   «KeyBPM Detector.component» → ~/Library/Audio/Plug-Ins/Components
+   (в Finder: Переход → Переход к папке… и вставь путь)
+
+2. Плагин не подписан сертификатом Apple, поэтому один раз сними карантин.
+   Открой Терминал и выполни:
+
+   xattr -cr ~/Library/Audio/Plug-Ins/VST3/"KeyBPM Detector.vst3"
+   xattr -cr ~/Library/Audio/Plug-Ins/Components/"KeyBPM Detector.component"
+
+   Для программы (если будешь её запускать):
+   xattr -cr "/путь/к/KeyBPM Detector.app"
+
+3. В FL Studio: Options → Manage plugins → Find installed plugins.
+
+4. Повесь плагин на канал микшера (или на Master) и включи воспроизведение.
+   Темп появится через ~5 секунд, тональность — через ~10 секунд.
+
+Ещё можно перетащить аудиофайл прямо в окно плагина или нажать «Открыть файл».

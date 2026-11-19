@@ -1,0 +1,86 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+
+      - name: Build
+        run: cmake --build build --config Release --target KeyBpmDetector_VST3 KeyBpmDetector_Standalone --parallel
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $out = "KeyBPM-Detector-Windows"
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+          Copy-Item -Recurse "build/KeyBpmDetector_artefacts/Release/VST3/KeyBPM Detector.vst3" "$out/"
+          Copy-Item "build/KeyBpmDetector_artefacts/Release/Standalone/KeyBPM Detector.exe" "$out/"
+          Copy-Item "docs/INSTALL_WINDOWS.txt" "$out/INSTALL.txt"
+          Compress-Archive -Path "$out/*" -DestinationPath "$out.zip" -Force
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KeyBPM-Detector-Windows
+          path: KeyBPM-Detector-Windows.zip
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -S . -B build -G Xcode -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DCMAKE_OSX_DEPLOYMENT_TARGET=10.13
+
+      - name: Build
+        run: cmake --build build --config Release --target KeyBpmDetector_VST3 KeyBpmDetector_AU KeyBpmDetector_Standalone -- -quiet
+
+      - name: Package
+        run: |
+          OUT="KeyBPM-Detector-Mac"
+          mkdir -p "$OUT"
+          A="build/KeyBpmDetector_artefacts/Release"
+          cp -R "$A/VST3/KeyBPM Detector.vst3" "$OUT/"
+          cp -R "$A/AU/KeyBPM Detector.component" "$OUT/"
+          cp -R "$A/Standalone/KeyBPM Detector.app" "$OUT/"
+          cp docs/INSTALL_MAC.txt "$OUT/INSTALL.txt"
+          for b in "$OUT"/*.vst3 "$OUT"/*.component "$OUT"/*.app; do codesign --force --deep -s - "$b"; done
+          ditto -c -k --keepParent "$OUT" "$OUT.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KeyBPM-Detector-Mac
+          path: KeyBPM-Detector-Mac.zip
+
+  release:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [windows, macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: KeyBPM Detector 1.0.${{ github.run_number }}
+          body: |
+            Скачай архив для своей системы, распакуй и прочитай INSTALL.txt внутри.
+            - Windows: KeyBPM-Detector-Windows.zip (VST3 для FL Studio + отдельная программа)
+            - Mac: KeyBPM-Detector-Mac.zip (VST3, AU + отдельная программа)
+          files: |
+            KeyBPM-Detector-Windows.zip
+            KeyBPM-Detector-Mac.zip
